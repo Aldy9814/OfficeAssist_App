@@ -1,0 +1,31 @@
+# VENV Python
+venv/
+env/
+.venv/
+
+# Credential
+.env
+firebase-credentials.json
+*-credentials.json
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Generate Output
+uploads/
+*.pdf
+*.xlsx
+*.xls
+*.csv
+*.docx
+
+# Log File
+*.log
+
+# System File IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

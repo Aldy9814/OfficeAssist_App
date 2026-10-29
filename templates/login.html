@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - OfficeAssist</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f4f6f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .login-card { width: 100%; max-width: 400px; border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .login-header { background-color: #203764; color: white; border-radius: 10px 10px 0 0; padding: 20px; text-align: center; }
+    </style>
+</head>
+
+<body>
+    <div class="card login-card">
+        <div class="login-header">
+            <h3 class="mb-0"><i class="bi bi-robot me-2"></i>OfficeAssist </h3>
+            <small>Admin Dashboard Portal</small>
+        </div>
+        <div class="card-body p-4">
+            <form id="loginForm">
+                <div class="row mb-3 align-items-center">
+                    <label for="username" class="col-4 col-form-label text-muted small fw-bold">Username: </label>
+                    <div class="col-8">
+                        <input type="text" class="form-controll" id="username" required>
+                    </div>
+                </div>
+                <div class="row mb-4 align-items-center">
+                    <label for="password" class="col-4 col-form-label text-muted small fw-bold">Password</label>
+                    <div class="col-8">
+                        <input type="password" class="form-controll" id="password" required>
+                    </div>
+                </div>
+                <div id="errorMessage" class="alert alert-danger d-none py-2"></div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnLogin">
+                    Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnLogin');
+            const errorDiv = document.getElementById('errorMessage');
+            
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Memproses...';
+            btn.disabled = true;
+            errorDiv.classList.add('d-none');
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    errorDiv.textContent = result.pesan || 'Username atau Password salah!';
+                    errorDiv.classList.remove('d-none');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Terjadi kesalahan koneksi server.';
+                errorDiv.classList.remove('d-none');
+            } finally {
+                btn.innerHTML = 'Login';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

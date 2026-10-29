@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Broadcast Pesan</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script id="server-data" type="application/json">
+    {
+        "broadcastList": {{ broadcast_list_json | safe }},
+        "employeeList": {{ employee_list_json | safe }}
+    }
+    </script>
+    <script>
+        window.SERVER_DATA = JSON.parse(document.getElementById('server-data').textContent);
+    </script>
+
+    {% raw %}
+    <script type="text/babel">
+        const { useState } = React;
+
+        function Sidebar({ activePage }) {
+            return (
+                <div style={styles.sidebar}>
+                    <h4 style={styles.sidebarHeader}><i className="bi bi-robot me-2"></i>OfficeAssist</h4>
+                    <nav>
+                        <a href="/" style={{...styles.sidebarLink, ...(activePage === 'dashboard' ? styles.sidebarLinkActive : {})}}><i className="bi bi-speedometer2 me-2"></i>Dashboard</a>
+                        <a href="/karyawan" style={{...styles.sidebarLink, ...(activePage === 'karyawan' ? styles.sidebarLinkActive : {})}}><i className="bi bi-people me-2"></i>Karyawan</a>
+                        <a href="/inventaris" style={{...styles.sidebarLink, ...(activePage === 'inventaris' ? styles.sidebarLinkActive : {})}}><i className="bi bi-box-seam me-2"></i>Inventaris</a>
+                        <a href="/audit-log" style={{...styles.sidebarLink, ...(activePage === 'audit-log' ? styles.sidebarLinkActive : {})}}><i className="bi bi-journal-text me-2"></i>Audit Log</a>
+                        <a href="/broadcast" style={{...styles.sidebarLink, ...(activePage === 'broadcast' ? styles.sidebarLinkActive : {})}}><i className="bi bi-broadcast me-2"></i>Broadcast</a>
+                    </nav>
+                </div>
+            );
+        }
+
+        function BroadcastApp() {
+            const [data] = useState(window.SERVER_DATA.broadcastList);
+            const [showModal, setShowModal] = useState(false);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            
+            const getNowLocal = () => {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                return now.toISOString().slice(0, 16);
+            };
+
+            const [formData, setFormData] = useState({
+                scheduled_time: getNowLocal(),
+                message: '',
+                attachment_type: 'teks',
+                file_path: ''
+            });
+
+            const handleInputChange = (e) => {
+                setFormData({ ...formData, [e.target.name]: e.target.value });
+            };
+
+            const employeesData = window.SERVER_DATA.employeeList;
+            const uniqueDivisions = [...new Set(employeesData.map(emp => emp.division))];
+
+            const [targetType, setTargetType] = useState("all");
+            const [selectedDivisions, setSelectedDivisions] = useState([]);
+            const [selectedEmployees, setSelectedEmployees] = useState([]);
+            const [isSendNow, setIsSendNow] = useState(false);
+            const [uploadFile, setUploadFile] = useState(null)
+
+            const handleCheckboxChange = (setter, stateList, value) => {
+                if (stateList.includes(value)) {
+                    setter(stateList.flter(item => item !== value));
+                } else {
+                    setter([...stateList, value]);
+                }
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setIsSubmitting(true);
+                
+                const targetJsonString = JSON.stringify({
+                    type: targetType,
+                    values: targetType === 'divisions' ? selectedDivisions : 
+                            targetType === 'employees' ? selectedEmployees : []
+                });
+                const sendTime = isSendNow ? "NOW" : formData.scheduled_time.replace('T', ' ') + ':00';
+
+                // Menyusun payload dengan FormData agar bisa mengangkut file
+                const payloadData = new FormData();
+                payloadData.append("scheduled_time", sendTime);
+                payloadData.append("message", formData.message);
+                payloadData.append("attachment_type", formData.attachment_type);
+                payloadData.append("target_audience", targetJsonString);
+                
+                if (formData.attachment_type !== 'teks' && uploadFile) {
+                    payloadData.append("file", uploadFile);
+                }
+
+                try {
+                    const response = await fetch('/api/broadcast', {
+                        method: 'POST',
+                        
+                    });
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert(result.pesan);
+                        setShowModal(false);
+                        window.location.reload();
+                    } else {
+                        alert("Gagal menyimpan data.");
+                    }
+                } catch (error) {
+                    alert('Terjadi kesalahan koneksi saat upload file.');
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            const handleDelete = async (id) => {
+                if (window.confirm("Yakin ingin menghapus jadwal pesan ini?")) {
+                    const response = await fetch(`/api/broadcast/${id}`, { method: 'DELETE' });
+                    if (response.ok) window.location.reload();
+                }
+            };
+
+            return (
+                <div style={styles.bodyBackground}>
+                    <div className="container-fluid">
+                        <div className="row">
+                            <div className="col-md-2 p-0"><Sidebar activePage="broadcast" /></div>
+                            
+                            <div className="col-md-10 p-4">
+                                <div className="d-flex justify-content-between align-items-center mb-4">
+                                    <div>
+                                        <h2 className="fw-bold m-0">Jadwal Broadcast WA</h2>
+                                        <p className="text-muted m-0">Kirim pengumuman massal ke seluruh karyawan</p>
+                                    </div>
+                                    <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+                                        <i className="bi bi-send-plus me-2"></i>Buat Pesan Baru
+                                    </button>
+                                </div>
+                                
+                                <div className="card shadow-sm border-0">
+                                    <div className="card-body p-0">
+                                        <table className="table table-hover mb-0">
+                                            <thead>
+                                                <tr style={styles.tableHeader}>
+                                                    <th>ID</th>
+                                                    <th>Waktu Pengiriman</th>
+                                                    <th style={{width: '35%'}}>Isi Pesan</th>
+                                                    <th>Lampiran</th>
+                                                    <th>Status</th>
+                                                    <th className="text-center">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {data.length > 0 ? (
+                                                    data.map((item, i) => (
+                                                        <tr key={i}>
+                                                            <td className="fw-bold text-muted">#{item.id}</td>
+                                                            <td><i className="bi bi-clock me-1"></i> {item.scheduled_time}</td>
+                                                            <td><div style={{maxHeight: '60px', overflow: 'hidden', textOverflow: 'ellipsis'}}>{item.message}</div></td>
+                                                            <td>
+                                                                {item.attachment_type === 'teks' ? <span className="badge bg-secondary">Hanya Teks</span> : 
+                                                                 item.attachment_type === 'gambar' ? <span className="badge bg-info text-dark"><i className="bi bi-image me-1"></i> Gambar</span> :
+                                                                 <span className="badge bg-warning text-dark"><i className="bi bi-file-earmark me-1"></i> Dokumen</span>}
+                                                            </td>
+                                                            <td>
+                                                                {item.status === 'pending' ? <span className="badge bg-warning text-dark">Menunggu</span> : 
+                                                                 item.status === 'sukses' ? <span className="badge bg-success">Terkirim</span> :
+                                                                 <span className="badge bg-danger">Gagal</span>}
+                                                            </td>
+                                                            <td className="text-center">
+                                                                <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(item.id)} disabled={item.status === 'sukses'}>
+                                                                    <i className="bi bi-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr><td colSpan="6" className="text-center py-5 text-muted">Belum ada jadwal broadcast.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {showModal && (
+                        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                            <div className="modal-dialog modal-dialog-centered modal-lg">
+                                <div className="modal-content border-0 shadow-lg">
+                                    <form onSubmit={handleSubmit}>
+                                        <div className="modal-header bg-primary text-white">
+                                            <h5 className="modal-title fw-bold"><i className="bi bi-megaphone me-2"></i>Buat Jadwal Broadcast</h5>
+                                            <button type="button" className="btn-close btn-close-white" onClick={() => setShowModal(false)}></button>
+                                        </div>
+                                        <div className="modal-body p-4 bg-light">
+                                            
+                                            <div className="mb-4">
+                                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                                    <label className="form-label small fw-bold text-muted m-0">Waktu Pengiriman</label>
+                                                    <div className="form-check form-switch m-0">
+                                                        <input className="form-check-input" type="checkbox" role="switch" id="sendNow" checked={isSendNow} onChange={(e) => setIsSendNow(e.target.checked)} />
+                                                        <label className="form-check-label small text-muted ms-1" htmlFor="sendNow">Kirim Sekarang</label>
+                                                    </div>
+                                                </div>
+                                                {!isSendNow && (
+                                                    <input type="datetime-local" className="form-control shadow-sm" name="scheduled_time" value={formData.scheduled_time} onChange={handleInputChange} required={!isSendNow} />
+                                                )}
+                                            </div>
+
+                                            <div className="mb-3">
+                                                <label className="form-label small fw-bold text-muted">Target Penerima</label>
+                                                <select className="form-select shadow-sm mb-2" value={targetType} onChange={(e) => {
+                                                    setTargetType(e.target.value);
+                                                    setSelectedDivisions([]);
+                                                    setSelectedEmployees([]);
+                                                }}>
+                                                    <option value="all">Semua Karyawan</option>
+                                                    <option value="divisions">Divisi Tertentu</option>
+                                                    <option value="employees">Karyawan Tertentu</option>
+                                                </select>
+
+                                                {targetType === 'divisions' && (
+                                                    <div className="border p-2 rounded bg-white shadow-sm" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                                                        {uniqueDivisions.map((div, idx) => (
+                                                            <div className="form-check" key={idx}>
+                                                                <input className="form-check-input" type="checkbox" id={`div-${idx}`} 
+                                                                    checked={selectedDivisions.includes(div)}
+                                                                    onChange={() => handleCheckboxChange(setSelectedDivisions, selectedDivisions, div)}
+                                                                />
+                                                                <label className="form-check-label small" htmlFor={`div-${idx}`}>{div}</label>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {targetType === 'employees' && (
+                                                    <div className="border p-2 rounded bg-white shadow-sm" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                                                        {employeesData.map((emp, idx) => (
+                                                            <div className="form-check" key={idx}>
+                                                                <input className="form-check-input" type="checkbox" id={`emp-${emp.employee_id}`} 
+                                                                    checked={selectedEmployees.includes(emp.employee_id)}
+                                                                    onChange={() => handleCheckboxChange(setSelectedEmployees, selectedEmployees, emp.employee_id)}
+                                                                />
+                                                                <label className="form-check-label small" htmlFor={`emp-${emp.employee_id}`}>
+                                                                    {emp.full_name} <span className="text-muted">({emp.division})</span>
+                                                                </label>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mb-3">
+                                                <label className="form-label small fw-bold text-muted">Tipe Lampiran</label>
+                                                <select className="form-select shadow-sm" name="attachment_type" value={formData.attachment_type} onChange={handleInputChange}>
+                                                    <option value="teks">Hanya Teks (Tanpa Lampiran)</option>
+                                                    <option value="gambar">Gambar (JPG/PNG)</option>
+                                                    <option value="dokumen">Dokumen (PDF/DOCX)</option>
+                                                </select>
+                                            </div>
+
+                                            {formData.attachment_type !== 'teks' && (
+                                                <div className="mb-3 p-3 bg-white border rounded shadow-sm">
+                                                    <label className="form-label small fw-bold text-muted">Upload File Lampiran</label>
+                                                    <input 
+                                                        type="file" 
+                                                        className="form-control form-control-sm" 
+                                                        accept={formData.attachment_type === 'gambar' ? 'image/png, image/jpeg' : '.pdf,.docx'} 
+                                                        onChange={(e) => setUploadFile(e.target.files[0])} 
+                                                        required 
+                                                    />
+                                                </div>
+                                            )}
+
+                                            <div className="mb-2">
+                                                <label className="form-label small fw-bold text-muted">Isi Pesan (Caption)</label>
+                                                <textarea className="form-control shadow-sm" name="message" rows="5" placeholder="Tuliskan pengumuman..." value={formData.message} onChange={handleInputChange} required></textarea>
+                                            </div>
+                                           
+                                        </div>
+                                        <div className="modal-footer">
+                                            <button type="button" className="btn btn-light border" onClick={() => setShowModal(false)} disabled={isSubmitting}>Batal</button>
+                                            <button type="submit" className="btn btn-primary px-4" disabled={isSubmitting}>
+                                                {isSubmitting ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-clock-history me-2"></i>} Jadwalkan
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const styles = {
+            bodyBackground: { 
+                backgroundColor: '#f4f6f9', 
+                minHeight: '100vh' 
+            },
+            sidebar: { 
+                width: '260px',             
+                height: '100vh',            
+                position: 'sticky',         
+                top: 0,                     
+                backgroundColor: '#203764', 
+                color: '#ffffff', 
+                padding: '20px', 
+                display: 'flex', 
+                flexDirection: 'column',
+                zIndex: 1000
+            },
+            sidebarHeader: { 
+                textAlign: 'center', 
+                marginBottom: '1.5rem', 
+                borderBottom: '1px solid rgba(255, 255, 255, 0.2)', 
+                paddingBottom: '1rem' 
+            },
+            sidebarLink: { 
+                color: '#cfd8dc', 
+                textDecoration: 'none', 
+                padding: '12px 15px', 
+                display: 'block', 
+                borderRadius: '5px', 
+                marginBottom: '5px', 
+                transition: 'all 0.3s' 
+            },
+            sidebarLinkActive: { 
+                backgroundColor: '#162646', 
+                color: '#ffffff', 
+                fontWeight: 'bold' 
+            },
+            tableHeader: { 
+                backgroundColor: '#203764', 
+                color: '#ffffff' 
+            }
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<BroadcastApp />);
+    </script>
+    {% endraw %}
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OfficeAssist - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script id="server-data" type="application/json">
+    {
+        "totalEmployees": {{ total_employees }},
+        "totalInventory": {{ total_inventory }},
+        "totalInteractions": {{ total_interactions }},
+        "auditLogs": {{ audit_logs_json | safe }}
+    }
+    </script>
+    <script>
+        window.SERVER_DATA = JSON.parse(document.getElementById('server-data').textContent);
+    </script>
+
+    {% raw %}
+    <script type="text/babel">
+        const { useState } = React;
+
+        const handleLogout = async () => {
+            if (window.confirm("apakah anda yakin ingin keluar?")) {
+                try {
+                    const response = await fetch('/api/logout', { method: 'POST'});
+                    if (response.ok) {
+                        window.location.href = '/login';
+                    }
+                } catch (error) {
+                    alert("Terjadi kesalahan saat logout.")
+                }
+            }
+        };
+
+        function Sidebar({ activePage }) {
+            
+            return (
+                <div style={styles.sidebar}>
+                    <div>
+                        <h4 style={styles.sidebarHeader}><i className="bi bi-robot me-2"></i>OfficeAssist</h4>
+                        <nav className="mb-auto">
+                            <a href="/" style={{...styles.sidebarLink, ...(activePage === 'dashboard' ? styles.sidebarLinkActive : {})}}><i className="bi bi-speedometer2 me-2"></i>Dashboard</a>
+                            <a href="/karyawan" style={{...styles.sidebarLink, ...(activePage === 'karyawan' ? styles.sidebarLinkActive : {})}}><i className="bi bi-people me-2"></i>Karyawan</a>
+                            <a href="/inventaris" style={{...styles.sidebarLink, ...(activePage === 'inventaris' ? styles.sidebarLinkActive : {})}}><i className="bi bi-box-seam me-2"></i>Inventaris</a>
+                            <a href="/audit-log" style={{...styles.sidebarLink, ...(activePage === 'audit-log' ? styles.sidebarLinkActive : {})}}><i className="bi bi-journal-text me-2"></i>Audit Log</a>
+                            <a href="/broadcast" style={{...styles.sidebarLink, ...(activePage === 'broadcast' ? styles.sidebarLinkActive : {})}}><i className="bi bi-broadcast me-2"></i>Broadcast</a>
+                        </nav>
+                    </div>
+                    
+                    <div className="mt-auto pt-3 border-top border-secondary">
+                        <div className="d-flex align-items-center mb-3 text-white overflow-hidden">
+                            <div className="bg-light text-primary rounded-circle d-flex justify-content-center align-items-center me-3 flex-shrink-0" style={{width: '40px', height: '40px', fontSize: '1.2rem'}}>
+                                <i className="bi bi-person-fill"></i>
+                            </div>
+                            <div className="text-truncate">
+                                <h6 className="m-0 fw-bold text-truncate">Administrator</h6>
+                                <small className="text-white-50 text-truncate d-block">Super Admin</small>
+                            </div>
+                        </div>
+                        <button onClick={handleLogout} className="btn btn-outline-danger w-100 btn-sm fw-bold text-white border-white">
+                            <i className="bi bi-box-arrow-left me-2"></i>Logout
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function DashboardApp() {
+            const [data] = useState(window.SERVER_DATA);
+
+            return (
+                <div style={styles.bodyBackground}>
+                    <div className="d-flex w-100">
+                        <div className="flex-shrink-0"><Sidebar activePage="dashboard" /></div>
+
+                            <div className="flex-grow-1 p-4">
+                                <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+                                    <h2 className="fw-bold">Admin Dashboard</h2>
+                                    <div><span className="badge bg-success fs-6"><i className="bi bi-check-circle me-1"></i> Bot Aktif</span></div>
+                                </div>
+
+                                <div className="row mb-4">
+                                    <div className="col-md-4">
+                                        <div style={styles.cardStatPrimary} className="p-3">
+                                            <h6 className="text-muted">Total Karyawan</h6>
+                                            <h3 className="fw-bold m-0">{data.totalEmployees}</h3>
+                                        </div>
+                                    </div>
+                                    <div className="col-md-4">
+                                        <div style={styles.cardStatWarning} className="p-3">
+                                            <h6 className="text-muted">Total Inventaris</h6>
+                                            <h3 className="fw-bold m-0">{data.totalInventory}</h3>
+                                        </div>
+                                    </div>
+                                    <div className="col-md-4">
+                                        <div style={styles.cardStatSuccess} className="p-3">
+                                            <h6 className="text-muted">Interaksi Hari Ini</h6>
+                                            <h3 className="fw-bold m-0">{data.totalInteractions}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="card shadow-sm border-0">
+                                    <div className="card-header bg-white py-3">
+                                        <h5 className="mb-0 fw-bold"><i className="bi bi-clock-history me-2"></i> Aktivitas WhatsApp Terbaru</h5>
+                                    </div>
+                                    <div className="card-body p-0">
+                                        <div className="table-responsive">
+                                            <table className="table table-hover table-striped mb-0">
+                                                <thead>
+                                                    <tr style={styles.tableHeader}>
+                                                        <th>Waktu</th>
+                                                        <th>Nomor WA</th>
+                                                        <th>Pesan Masuk</th>
+                                                        <th>Intent AI</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {data.auditLogs && data.auditLogs.length > 0 ? (
+                                                        data.auditLogs.map((log, index) => (
+                                                            <tr key={index}>
+                                                                <td>{log.timestamp}</td>
+                                                                <td>{log.whatsapp_number}</td>
+                                                                <td>{log.incoming_message}</td>
+                                                                <td><span className="badge bg-info text-dark">{log.detected_intent}</span></td>
+                                                                <td>
+                                                                    {log.response_status === 'success' ? (
+                                                                        <span className="badge bg-success">Sukses</span>
+                                                                    ) : (
+                                                                        <span className="badge bg-secondary">{log.response_status}</span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    ) : (
+                                                        <tr><td colSpan="5" className="text-center text-muted py-4">Belum ada riwayat aktivitas pesan.</td></tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                    </div>
+                </div>
+            );
+        }
+
+        const styles = {
+            bodyBackground: { backgroundColor: '#f4f6f9', minHeight: '100vh' },
+            sidebar: { 
+                width: '260px',             
+                height: '100vh',            
+                position: 'sticky',         
+                top: 0,                     
+                backgroundColor: '#203764', 
+                color: '#ffffff', 
+                padding: '20px', 
+                display: 'flex', 
+                flexDirection: 'column',
+                zIndex: 1000                
+            },
+            sidebarHeader: { textAlign: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.2)', paddingBottom: '1rem' },
+            sidebarLink: { color: '#cfd8dc', textDecoration: 'none', padding: '12px 15px', display: 'block', borderRadius: '5px', marginBottom: '5px', transition: 'all 0.3s' },
+            sidebarLinkActive: { backgroundColor: '#162646', color: '#ffffff', fontWeight: 'bold' },
+            // Pengaturan khusus untuk kartu statistik di index.html
+            cardStatPrimary: { borderLeft: '5px solid #0d6efd', borderRadius: '8px', backgroundColor: '#ffffff', boxShadow: '0 0.125rem 0.25rem rgba(0,0,0,0.075)' },
+            cardStatWarning: { borderLeft: '5px solid #ffc107', borderRadius: '8px', backgroundColor: '#ffffff', boxShadow: '0 0.125rem 0.25rem rgba(0,0,0,0.075)' },
+            cardStatSuccess: { borderLeft: '5px solid #198754', borderRadius: '8px', backgroundColor: '#ffffff', boxShadow: '0 0.125rem 0.25rem rgba(0,0,0,0.075)' },
+            tableHeader: { backgroundColor: '#203764', color: '#ffffff', userSelect: 'none' }
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DashboardApp />);
+    </script>
+    {% endraw %}
+</body>
+</html>
