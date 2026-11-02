@@ -8,31 +8,27 @@ import os, json, jwt, requests
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# Import Firebase & Gemini
 import firebase_admin
 from firebase_admin import credentials
 from google import genai
 
-# Import Routers
-from routers import hr
+from routers import hr, disposition, vehicle
 
 load_dotenv()
 
-# Setup Database & Auth
 DB_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ADMIN_USER = os.getenv("ADMIN_USER")
 ADMIN_PASS = os.getenv("ADMIN_PASS")
 engine = create_engine(DB_URL)
 
-# Setup Gemini
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-# Setup Firebase (Hapus komentar jika file firebase-credentials.json sudah ada)
-# cred = credentials.Certificate("firebase-credentials.json")
-# if not firebase_admin._apps:
-#     firebase_admin.initialize_app(cred)
+
+cred = credentials.Certificate("ServiceAccountKey.json")
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(cred)
 
 # Setup Green API
 GREEN_API_URL = os.getenv("GREEN_API_URL")
@@ -52,6 +48,8 @@ app.add_middleware(
 
 # Registrasi Router
 app.include_router(hr.router)
+app.include_router(disposition.router)
+app.include_router(vehicle.router)
 
 # ==================== MIDDLEWARE AUTH (DASHBOARD) ====================
 @app.middleware("http")
@@ -150,7 +148,7 @@ async def verify_webhook(request: Request):
 @app.post("/webhook")
 async def receive_message(request: Request, background_tasks: BackgroundTasks):
     body = await request.json()
-    if body.get("typeWebhook") in ["incomingMessageReveived"]:
+    if body.get("typeWebhook") in ["incomingMessageReceived"]:
         msg_data = body.get("messageData", {})
         msg_text = msg_data.get("textMessageData", {}).get("textMessage") or msg_data.get("extendedTextMessage", {}).get("text")
         if msg_text:

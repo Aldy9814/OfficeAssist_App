@@ -5,7 +5,7 @@ env/
 
 # Credential
 .env
-firebase-credentials.json
+serviceAccountKey.json
 *-credentials.json
 
 # Cache Python

@@ -8,7 +8,7 @@ import io
 import pandas as pd
 from firebase_admin import firestore
 
-router = APIRouter(prefix="vehicle", tags=["Monitoring Kendaraan"])
+router = APIRouter(prefix="/vehicle", tags=["Monitoring Kendaraan"])
 
 class VehicleCreate(BaseModel):
     name: str
@@ -41,7 +41,6 @@ class CheckInRequest(BaseModel):
 class UpdateTimeRequest(BaseModel):
     checkout_time: str
 
-
 def get_next_id(collection_ref, prefix: str) -> str:
     docs = collection_ref.stream()
     max_num = 0
@@ -58,7 +57,7 @@ def get_next_id(collection_ref, prefix: str) -> str:
 @router.get("/dashboard/summary")
 def get_dashboard_summary():
     db = firestore.client()
-    vehicles_docs = db.collection("vehicles").stream
+    vehicles_docs = db.collection("vehicles").stream()
 
     available_vehicles, in_use_vehicles, maintenance = [], [], []
 
@@ -183,7 +182,7 @@ def process_checkout(req: CheckOutRequest):
     if v_data.get("status") != "Available": raise HTTPException(status_code=400, detail="Kendaraan sedang dipakai/Maintenance")
     if req.start_km < v_data.get("current_km", 0): raise HTTPException(status_code=400, detail="KM berangkat kurang dari KM saat ini")
 
-    co_time = req.checkout_time if req.checkout_time else datetime.now().strftime("%Y-%m-%d %H:%M:%:S")
+    co_time = req.checkout_time if req.checkout_time else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_id = str(uuid.uuid4())[:8]
 
     new_log = {
@@ -195,7 +194,7 @@ def process_checkout(req: CheckOutRequest):
     }
 
     db.collection("trip_logs").document(log_id).set(new_log)
-    db.collection("vehicles").document(req.vehicle_id).update({"status": "In User"})
+    db.collection("vehicles").document(req.vehicle_id).update({"status": "In Use"})
     return {"status": "success", "message": "Checkout successful", "data": new_log}
 
 @router.post("/transactions/checkin/{log_id}")
