@@ -45,7 +45,7 @@ def get_next_id(collection_ref, prefix: str) -> str:
     docs = collection_ref.stream()
     max_num = 0
     for doc in docs:
-        if doc.id.statswith(prefix):
+        if doc.id.startswith(prefix):
             try:
                 num_part = int(doc.id.split("-")[1])
                 if num_part > max_num:

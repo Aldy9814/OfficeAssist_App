@@ -1,20 +1,22 @@
+import os, json, jwt, requests
+from contextlib import asynccontextmanager, supress
+from datetime import datetime, timedelta, timezone
+
 from fastapi import FastAPI, Request, HTTPException, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import create_engine, text
-import os, json, jwt, requests
-from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 import firebase_admin
 from firebase_admin import credentials
-from google import genai
-
-from routers import hr, disposition, vehicle
 
 load_dotenv()
+
+from google import genai
+from routers import hr, disposition, vehicle
 
 DB_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
