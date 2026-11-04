@@ -35,7 +35,7 @@ def parse_rule_based(text: str, today: Optional[date] = None) -> dict:
     has_vehicle = any(w in t for w in vehicle_words)
 
     if has_vehicle and any(w in t for w in ("laporan", "rekap", "riwayat", "history")):
-        intent = "status_kendaraan"
+        intent = "laporan_kendaraan"
     elif has_vehicle and any(w in t for w in ("status", "tersedia", "available", "dipakai", "pakai")):
         intent = "status_kendaraan"
     else:

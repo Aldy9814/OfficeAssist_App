@@ -18,7 +18,7 @@ async def run_poller() -> None:
             note = await asyncio.to_thread(client.receive_notification, 20)
             if not note:
                 continue
-            receipt_id = note["receiptID"]
+            receipt_id = note["receiptId"]
             parsed = parse_incoming(note.get("body", {}))
             if parsed:
                 t = asyncio.create_task(asyncio.to_thread(handle_message, parsed[0], parsed [1], client))

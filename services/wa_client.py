@@ -37,7 +37,7 @@ class GreenApiClient:
         self.session = requests.Session()
 
     def _url(self, method: str, *extra: str) -> str:
-        base = f"{self.base_url}/waInstancee{self.instance_id}/{method}/{self.token}"
+        base = f"{self.base_url}/waInstance{self.instance_id}/{method}/{self.token}"
         return "/".join([base, *extra])
 
     def send_text(self, to: str, text: str) -> None:
@@ -51,8 +51,9 @@ class GreenApiClient:
     def send_file(self, to: str, path: str, caption: str = "") -> None:
         with open(path, "rb") as f:
             r = self.session.post(
-                self._url("seendFileByUpload"),
+                self._url("sendFileByUpload"),
                 data={"chatId": to_chat_id(to), "caption": caption},
+                files={"file": (os.path.basename(path), f)},
                 timeout=120,
             )
         r.raise_for_status()
@@ -60,7 +61,8 @@ class GreenApiClient:
     def receive_notification(self, timeout: int = 20) -> Optional[dict]:
         r = self.session.get(
             self._url("receiveNotification"),
-            params=timeout + 10,
+            params={"receiveTimeout": timeout},
+            timeout=timeout + 10,
         )
         r.raise_for_status()
         return r.json()
@@ -80,7 +82,7 @@ def parse_incoming(body: dict) -> Optional[Tuple[str, str]]:
     if not body or body.get("typeWebhook") != "incomingMessageReceived":
         return None
     sender_data = body.get("senderData", {})
-    if str(sender_data.get("sender", "")).endswith("@g.us"):
+    if str(sender_data.get("chatId", "")).endswith("@g.us"):
         return None
     sender = sender_data.get("sender", "")
     md = body.get("messageData", {})

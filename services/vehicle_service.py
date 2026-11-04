@@ -1,10 +1,8 @@
 import os
 from collections import Counter
 from datetime import date
-from pydoc import doc
 from typing import List, Optional
 
-from httpx import stream
 import pandas as pd 
 from firebase_admin import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -26,8 +24,8 @@ def fetch_trips(start: date, end: date, keyword: Optional[str]= None) -> List[di
     vehicles = {d.id: d.to_dict() for d in db.collection("vehicles").stream()}
     query = (
         db.collection("trip_logs")
-        .where(filter=FieldFilter("checkout_timer", ">=", start_s))
-        .where(filter=FieldFilter("checkout_timer", "<=", end_s))
+        .where(filter=FieldFilter("checkout_time", ">=", start_s))
+        .where(filter=FieldFilter("checkout_time", "<=", end_s))
     )
 
     rows = []
@@ -64,7 +62,7 @@ def build_excel(rows: List[dict], start: date, end: date):
     df["end_km"] = df["end_km"].apply(lambda v: "-" if v is None or pd.isna(v) else v)
     df = df.rename (columns=EXCEL_COLUMNS)
     path = os.path.join(REPORT_DIR, f"Laporan_kendaraan_{start.isoformat()}_{end.isoformat()}.xlsx")
-    with pd.ExcelWriter(path ,engine="epnpyxl") as writer:
+    with pd.ExcelWriter(path ,engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Laporan")
     return path
 
