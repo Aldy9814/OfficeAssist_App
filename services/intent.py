@@ -49,10 +49,12 @@ def parse_rule_based(text: str, today: Optional[date] = None) -> dict:
         period = "this_week"
     elif "bulan lalu" in t:
         period = "last_month"
+    elif "bulan ini" in t:
+        period = "this_month"
     elif "hari ini" in t:
         period = "today"
     else:
-        period = "this_month"
+        period = "today"
  
     start, end = resolve_period(period, today)
     return {

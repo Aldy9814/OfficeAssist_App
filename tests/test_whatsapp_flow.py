@@ -71,4 +71,12 @@ def test_unregistered_number_is_rejected(monkeypatch):
     client = ConsoleClient()
     d.handle_message("6280000000000@c.us", "laporan kendaraan", client)
     assert "belum terdaftar" in client.sent[0]["text"]
+
+def test_default_period_is_today():
+    r = parse_rule_based("laporan kendaraan", TODAY)
+    assert (r["start_date"], r["end_date"]) == ("2026-11-04", "2026-11-04")
+
+def test_this_month_still_works():
+    r = parse_rule_based("laporan kendaraan bulan ini", TODAY)
+    assert (r["start_date"], r["end_date"]) == ("2026-11-01", "2026-11-04")
     
