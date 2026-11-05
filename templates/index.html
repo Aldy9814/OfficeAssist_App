@@ -1,3 +1,37 @@
+Claude
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Index · HTML
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -27,7 +61,7 @@
 
     {% raw %}
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect } = React;
 
         const handleLogout = async () => {
             if (window.confirm("apakah anda yakin ingin keluar?")) {
@@ -74,11 +108,61 @@
             );
         }
 
+        function AuditField({ label, value, mono }) {
+            return (
+                <div className="mb-3">
+                    <div className="text-muted text-uppercase small fw-bold mb-1">{label}</div>
+                    <div className="bg-light border rounded p-2" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: mono ? 'monospace' : 'inherit', fontSize: mono ? '0.85rem' : '0.95rem' }}>
+                        {value ? value : <span className="text-muted fst-italic">- (tidak tercatat)</span>}
+                    </div>
+                </div>
+            );
+        }
+
+        function AuditDetailModal({ log, onClose }) {
+            useEffect(() => {
+                const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+                window.addEventListener('keydown', onKey);
+                return () => window.removeEventListener('keydown', onKey);
+            }, []);
+
+            let params = log.parsed_params;
+            try { params = params ? JSON.stringify(JSON.parse(params), null, 2) : null; } catch (e) {}
+
+            return (
+                <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+                    <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title fw-bold"><i className="bi bi-chat-dots me-2"></i>Detail Interaksi WhatsApp</h5>
+                                <button type="button" className="btn-close" onClick={onClose}></button>
+                            </div>
+                            <div className="modal-body">
+                                <AuditField label="Waktu" value={log.timestamp} />
+                                <AuditField label="Nomor WhatsApp" value={log.whatsapp_number} />
+                                <AuditField label="Pesan masuk" value={log.incoming_message} />
+                                <AuditField label="Intent terdeteksi" value={log.detected_intent} />
+                                <AuditField label="Status" value={log.response_status} />
+                                <AuditField label="Parameter terbaca" value={params} mono />
+                                <AuditField label="Balasan bot" value={log.response_message} />
+                                <AuditField label="File terkirim" value={log.response_file} />
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>Tutup</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         function DashboardApp() {
             const [data] = useState(window.SERVER_DATA);
+            const [selected, setSelected] = useState(null);
 
             return (
                 <div style={styles.bodyBackground}>
+                    {selected && <AuditDetailModal log={selected} onClose={() => setSelected(null)} />}
                     <div className="d-flex w-100">
                         <div className="flex-shrink-0"><Sidebar activePage="dashboard" /></div>
 
@@ -123,16 +207,16 @@
                                                 <tbody>
                                                     {data.auditLogs && data.auditLogs.length > 0 ? (
                                                         data.auditLogs.map((log, index) => (
-                                                            <tr key={index}>
+                                                            <tr key={index} onClick={() => setSelected(log)} style={{ cursor: 'pointer' }}>
                                                                 <td>{log.timestamp}</td>
                                                                 <td>{log.whatsapp_number}</td>
                                                                 <td>{log.incoming_message}</td>
                                                                 <td><span className="badge bg-info text-dark">{log.detected_intent}</span></td>
                                                                 <td>
-                                                                    {log.response_status === 'success' ? (
+                                                                    {log.response_status === 'sukses' ? (
                                                                         <span className="badge bg-success">Sukses</span>
                                                                     ) : (
-                                                                        <span className="badge bg-secondary">{log.response_status}</span>
+                                                                        <span className="badge bg-danger">{log.response_status}</span>
                                                                     )}
                                                                 </td>
                                                             </tr>
@@ -182,3 +266,4 @@
     {% endraw %}
 </body>
 </html>
+Claude finished the response

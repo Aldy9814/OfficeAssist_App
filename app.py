@@ -126,7 +126,7 @@ async def view_dashboard(request: Request):
         total_emp = conn.execute(text("SELECT COUNT(*) FROM employees")).scalar() or 0
         total_interactions = conn.execute(text("SELECT COUNT(*) FROM audit_logs WHERE DATE(timestamp) = CURDATE()")).scalar() or 0
         logs = [dict(row._mapping) for row in conn.execute(text(
-            "SELECT timestamp, whatsapp_number, incoming_message, detected_intent, response_status FROM audit_logs ORDER BY timestamp DESC LIMIT 10")).fetchall()]
+            "SELECT id, timestamp, whatsapp_number, incoming_message, detected_intent, response_status, response_message, response_file, parsed_params FROM audit_logs ORDER BY timestamp DESC LIMIT 10")).fetchall()]
         for log in logs:
             log['timestamp'] = log['timestamp'].strftime("%Y-%m-%d %H:%M:%S")
 
