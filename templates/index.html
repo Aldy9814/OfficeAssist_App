@@ -107,6 +107,7 @@
                             </div>
                             <div className="modal-body">
                                 <AuditField label="Waktu" value={log.timestamp} />
+                                <AuditField label="Nama pengirim" value={log.sender_name ? log.sender_name + (log.sender_division ? ' (' + log.sender_division + ')' : '') : 'Tidak terdaftar'} />
                                 <AuditField label="Nomor WhatsApp" value={log.whatsapp_number} />
                                 <AuditField label="Pesan masuk" value={log.incoming_message} />
                                 <AuditField label="Intent terdeteksi" value={log.detected_intent} />

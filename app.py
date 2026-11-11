@@ -123,10 +123,19 @@ async def process_logout():
 @app.get("/", response_class=HTMLResponse)
 async def view_dashboard(request: Request):
     with engine.connect() as conn:
-        total_emp = conn.execute(text("SELECT COUNT(*) FROM employees")).scalar() or 0
-        total_interactions = conn.execute(text("SELECT COUNT(*) FROM audit_logs WHERE DATE(timestamp) = CURDATE()")).scalar() or 0
-        logs = [dict(row._mapping) for row in conn.execute(text(
-            "SELECT id, timestamp, whatsapp_number, incoming_message, detected_intent, response_status, response_message, response_file, parsed_params FROM audit_logs ORDER BY timestamp DESC LIMIT 10")).fetchall()]
+        total_emp = conn.execute(text(
+            "SELECT COUNT(*) FROM employees"
+        )).scalar() or 0
+        total_interactions = conn.execute(text(
+            "SELECT COUNT(*) FROM audit_logs " \
+            "WHERE DATE(timestamp) = CURDATE()"
+        )).scalar() or 0
+        logs = [dict(row._mapping) for row in conn.execute(text("""
+            SELECT a.id, a.timestamp, a.whatsapp_number, a.incoming_message, a.detected_intent, a.response_status, a.response_message, a.response_file, a.parsed_params, e.full_name AS sender_name, e.division as sender_division
+            FROM audit_logs a
+            LEFT JOIN employees e ON e.whatsapp_number IN (a.whatsapp_number, CONCAT('0', SUBSTRING(a.whatsapp_number, 3)))
+            ORDER BY a.timestamp DESC LIMIT 10
+        """)).fetchall()]
         for log in logs:
             log['timestamp'] = log['timestamp'].strftime("%Y-%m-%d %H:%M:%S")
 

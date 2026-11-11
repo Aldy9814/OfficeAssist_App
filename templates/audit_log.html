@@ -100,6 +100,7 @@
                             </div>
                             <div className="modal-body">
                                 <AuditField label="Waktu" value={log.timestamp} />
+                                <AuditField label="Nama pengirim" value={log.sender_name ? log.sender_name + (log.sender_division ? ' (' + log.sender_division + ')' : '') : 'Tidak terdaftar'} />
                                 <AuditField label="Nomor WhatsApp" value={log.whatsapp_number} />
                                 <AuditField label="Pesan masuk" value={log.incoming_message} />
                                 <AuditField label="Intent terdeteksi" value={log.detected_intent} />
@@ -208,8 +209,8 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {data.auditLogs.length > 0 ? (
-                                                    data.auditLogs.map((log, idx) => (
+                                                {filteredLogs.length > 0 ? (
+                                                    filteredLogs.map((log, idx) => (
                                                         <tr key={idx} onClick={() => setSelected(log)} style={{ cursor: 'pointer' }}>
                                                             <td className="text-muted"><i className="bi bi-clock me-1"></i>{log.timestamp}</td>
                                                             <td className="fw-bold">{log.whatsapp_number}</td>

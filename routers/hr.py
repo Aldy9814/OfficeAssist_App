@@ -112,5 +112,10 @@ async def delete_broadcast(broadcast_id: int):
 @router.get("/audit-log", response_class=HTMLResponse)
 async def view_audit_log(request: Request):
     with engine.connect() as conn:
-        audit_list = [serialize_row(row) for row in conn.execute(text("SELECT id, timestamp, whatsapp_number, incoming_message, detected_intent, response_status, response_message, response_file, parsed_params FROM audit_logs ORDER BY timestamp DESC")).fetchall()]
+        audit_list = [serialize_row(row) for row in conn.execute(text("""
+            SELECT a.id, a.timestamp, a.whatsapp_number, a.incoming_message, a.detected_intent, a.response_status, a.response_message, a.response_file, a.parsed_params, e.full_name AS sender_name, e.division as sender_division
+            FROM audit_logs a
+            LEFT JOIN employees e ON e.whatsapp_number IN (a.whatsapp_number, CONCAT('0', SUBSTRING(a.whatsapp_number, 3)))
+            ORDER BY a.timestamp DESC
+        """)).fetchall()]
     return templates.TemplateResponse(request=request, name="audit_log.html", context={"audit_list_json": json.dumps(audit_list)})
