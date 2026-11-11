@@ -45,7 +45,6 @@
                         <nav className="mb-auto">
                             <a href="/" style={{...styles.sidebarLink, ...(activePage === 'dashboard' ? styles.sidebarLinkActive : {})}}><i className="bi bi-speedometer2 me-2"></i>Dashboard</a>
                             <a href="/karyawan" style={{...styles.sidebarLink, ...(activePage === 'karyawan' ? styles.sidebarLinkActive : {})}}><i className="bi bi-people me-2"></i>Karyawan</a>
-                            <a href="/inventaris" style={{...styles.sidebarLink, ...(activePage === 'inventaris' ? styles.sidebarLinkActive : {})}}><i className="bi bi-box-seam me-2"></i>Inventaris</a>
                             <a href="/audit-log" style={{...styles.sidebarLink, ...(activePage === 'audit-log' ? styles.sidebarLinkActive : {})}}><i className="bi bi-journal-text me-2"></i>Audit Log</a>
                             <a href="/broadcast" style={{...styles.sidebarLink, ...(activePage === 'broadcast' ? styles.sidebarLinkActive : {})}}><i className="bi bi-broadcast me-2"></i>Broadcast</a>
                             <a href="/test-broadcast" style={{...styles.sidebarLink, ...(activePage === 'test-broadcast' ? styles.sidebarLinkActive : {})}}><i className="bi bi-shield-check me-2 text-warning"></i>Test Simulator</a>
@@ -121,6 +120,36 @@
         function AuditLogApp() {
             const [data] = useState(window.SERVER_DATA);
             const [selected, setSelected] = useState(null);
+            const [dateFrom, setDateFrom] = useState('');
+            const [dateTo, setDateTo] = useState('');
+
+            const toIso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,10);
+            
+            const setLastDays =(n)=> {
+                const end = new Date();
+                const start = new Date();
+                start.setDate(end.getDate() - n);
+                setDateFrom(toIso(start));
+                setDateTo(toIso(end));
+            };
+
+            const setThisMonth = () => {
+                const now = new Date();
+                setDateFrom(toIso(new Date(now.getFullYear(), now.getMonth(), 1)));
+                setDateTo(toIso(now));
+            };
+
+            const resetFilter = () => {
+                setDateFrom(''); 
+                setDateTo('');
+            };
+
+            const filteredLogs = data.auditLogs.filter((log) => {
+                const day = (log.timestamp || '').slice(0, 10);
+                if (dateFrom && day < dateFrom) return false;
+                if (dateTo && day > dateTo) return false;
+                return true;
+            });
 
             return (
                 <div style={styles.bodyBackground}>
@@ -135,6 +164,33 @@
                                 <div>
                                     <h2 className="fw-bold m-0">Log WhatsApp</h2>
                                     <p className="text-muted m-0">Employee chat history</p>
+                                </div>
+                            </div>
+
+                            <div className="card shadow-sm border-0 mb-3">
+                                <div className="card-body py-3">
+                                    <div className="row g-2 align-items-end"> 
+                                        <div className="col-auto"> 
+                                            <label className="form-label small fw-bold mb-1"> Dari tanggal </label>
+                                            <input type="date" className="form-control form-control-sm" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)}/>
+                                        </div>
+
+                                        <div className="col-auto">
+                                            <label className="form-label small fw-bold mb-1"> Sampai tanggal</label>
+                                            <input type="date" className="form-control form-control-sm" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)}/>
+                                        </div>
+                                    
+
+                                        <div className="col-auto d-flex gap-1">
+                                            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setLastDays(0)}>Hari ini</button>
+                                            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setLastDays(6)}>7 hari terakhir</button>
+                                            <button type="button" className="btn btn-outline-primary btn-sm" onClick={setThisMonth}>Bulan ini</button>
+                                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={resetFilter} disabled={!dateFrom && !dateTo}>Reset</button>
+                                        </div>
+                                        <div className="col text-end text-muted small">
+                                            Menampilkan {filteredLogs.length} dari {data.auditLogs.length} log
+                                        </div>
+                                    </div>                                    
                                 </div>
                             </div>
                             
