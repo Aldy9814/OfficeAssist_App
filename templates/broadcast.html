@@ -73,7 +73,7 @@
 
             const handleCheckboxChange = (setter, stateList, value) => {
                 if (stateList.includes(value)) {
-                    setter(stateList.flter(item => item !== value));
+                    setter(stateList.filter(item => item !== value));
                 } else {
                     setter([...stateList, value]);
                 }
@@ -104,7 +104,7 @@
                 try {
                     const response = await fetch('/api/broadcast', {
                         method: 'POST',
-                        
+                        body: payloadData
                     });
                     const result = await response.json();
 

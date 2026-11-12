@@ -16,10 +16,11 @@ from firebase_admin import credentials
 load_dotenv()
 
 from google import genai
-from routers import hr, disposition, vehicle
+from routers import hr, disposition, vehicle, broadcast_dev
 from services.dispatcher import handle_message
 from services.poller import run_poller
 from services.wa_client import ConsoleClient, get_client, parse_incoming
+from services.scheduler import run_broadcast_scheduler
 
 DB_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -41,11 +42,16 @@ async def lifespan(app: FastAPI):
     task = None
     if os.getenv("WA_PROVIDER", "console").lower() == "greenapi" and os.getenv("WA_MODE", "polling").lower() == "polling":
         task = asyncio.create_task(run_poller())
+    bc_task = None
+    if os.getenv("BROADCAST_SCHEDULER", "off").lower() == "on":
+        bc_task = asyncio.create_task(run_broadcast_scheduler())
     yield
-    if task:
-        task.cancel()
-        with suppress(asyncio.CancelledError):
-            await task
+    for t in (task, bc_task):
+        if t:
+            t.cancel()
+            with suppress(asyncio.CancelledError):
+                await t
+    
 
 # Setup Green API
 GREEN_API_URL = os.getenv("GREEN_API_URL")
@@ -66,6 +72,7 @@ app.add_middleware(
 app.include_router(hr.router)
 app.include_router(disposition.router)
 app.include_router(vehicle.router)
+app.include_router(broadcast_dev.router)
 
 # ==================== MIDDLEWARE AUTH (DASHBOARD) ====================
 @app.middleware("http")
