@@ -15,7 +15,9 @@ HELP_TEXT = (
     "Halo! Saya adalah OfficeAssist. Contoh perintah:\n"
     "- laporan kendaraan minggu ini\n"
     "- rekap mobil bulan lalu\n"
-    "- status kendaraan hari ini"
+    "- status kendaraan hari ini\n"
+    "- siapa yang pakai mobil L 2222 TS hari ini\n"
+    "- perjalanan Pak Anton minggu ini"
 )
 
 class RecordingClient:
@@ -88,12 +90,20 @@ def handle_message(sender: str, message: str, client) -> None:
             start = date.fromisoformat(parsed["start_date"])
             end = date.fromisoformat(parsed["end_date"])
             client.send_text(phone, "Baik, laporan sedang disiapkan")
-            rows = vehicle_service.fetch_trips(start, end, parsed.get("keyword"))
+            rows = vehicle_service.fetch_trips(start, end, parsed.get("keyword"), parsed.get("person"))
             summary = vehicle_service.format_summary(rows, start, end)
             client.send_text(phone, summary)
             if rows:
                 path = vehicle_service.build_excel(rows, start, end)
                 client.send_file(phone, path, caption="Laporan kendaraan (Excel)")
+        elif intent == "pemakaian_kendaraan":
+            start = date.fromisoformat(parsed["start_date"])
+            end = date.fromisoformat(parsed["end_date"])
+            rows = vehicle_service.fetch_trips(start, end, parsed.get("keyword"), parsed.get("person"))
+            client.send_text(phone, vehicle_service.format_usage(rows, start, end))
+            if len(rows) > vehicle_service.USAGE_MAX_ROWS:
+                path = vehicle_service.build_excel(rows, start, end)
+                client.send_file(phone, path, caption="Detail pemakaian kendaraan (Excel)")
         elif intent == "status_kendaraan":
             client.send_text(phone, vehicle_service.get_status_summary())
         else:

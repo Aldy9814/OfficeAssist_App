@@ -8,6 +8,7 @@ from firebase_admin import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 REPORT_DIR = "uploads/reports"
+USAGE_MAX_ROWS = 10
 
 EXCEL_COLUMNS = {
     "log_id": "Log ID", "vehicle_name": "Mobil", "license_plate": "Plat Nomor",
@@ -16,7 +17,27 @@ EXCEL_COLUMNS = {
     "start_km": "KM Awal", "end_km": "KM Akhir", "status": "Status",
 }
 
-def fetch_trips(start: date, end: date, keyword: Optional[str]= None) -> List[dict]:
+def _row_matches(row: dict, keyword: Optional[str] = None, person: Optional[str] = None)-> bool:
+    if keyword: 
+        k = keyword.lower().replace(" ", "")
+        hay = f"{row['vehicle_name']} {row['license_plate']}".lower().replace(" ", "")
+        if k not in hay:
+            return False
+    if person:
+        p = person.lower().strip()
+        people = f"{row['driver_name']} {row.get('passenger_names', '')}".lower()
+        if p not in people:
+            return False
+    return True
+
+def _hhmm(ts) -> str:
+    return ts[11:16] if ts and len(ts) >= 16 else "-"
+
+def _ddmm(ts) -> str:
+    return f"{ts[8:10]}/{ts[5:7]}" if ts and len(ts) >= 10 else "-"
+
+def fetch_trips(start: date, end: date, keyword: Optional[str]= None,
+                person: Optional[str] = None) -> List[dict]:
     db = firestore.client()
     start_s = f"{start.isoformat()} 00:00:00"
     end_s = f"{end.isoformat()} 23:59:59"
@@ -38,6 +59,7 @@ def fetch_trips(start: date, end: date, keyword: Optional[str]= None) -> List[di
             "license_plate": v.get("license_plate", "-"),
             "driver_name": d.get("driver_name", "-"),
             "passengers": ", ".join(f"{p.get('name')} ({p.get('nik')})" for p in d.get("passengers", [])) or "-",
+            "passenger_name": ", ".join(p.get("name", "") for p in d.get("passengers", [])) or "-",
             "destination": d.get("destination", "-"),
             "checkout_time": d.get("checkout_time", ""),
             "checkin_time": d.get("checkin_time") or "-",
@@ -45,14 +67,11 @@ def fetch_trips(start: date, end: date, keyword: Optional[str]= None) -> List[di
             "end_km": d.get("end_km"),
             "status": d.get("log_status", ""),
         }
-        if keyword:
-            k = keyword.lower().replace(" ", "")
-            hay = f"{row['vehicle_name']} {row['license_plate']}".lower().replace(" ", "")
-            if k not in hay:
-                continue
+        if not _row_matches(row, keyword, person):
+            continue
         rows.append(row)
 
-    rows.sort(key=lambda x: x["checkout_time"], reverse=True)
+    rows.sort(key=lambda r: r["checkout_time"], reverse=True)
 
     return rows
 
@@ -88,6 +107,24 @@ def format_summary(rows: List[dict], start: date, end: date) -> str:
         f"Tujuan terbanyak:\n{top_txt}"
     )
 
+def format_usage(rows: List[dict], start: date, end: date, max_rows: int = USAGE_MAX_ROWS)-> str:
+    period = f"{start:%d-%m-%Y}" if start == end else f"{start:%d-%m-%Y} s/d {end:%d-%m-%Y}"
+    if not rows:
+        return f"Pemakaian kendaraan ({period})\nTidak ada perjalanan yang cocok"
+
+    lines = [f"Pemakaian Kendaraan ({period})", f"Total: {len(rows)} perjalanan"]
+    for r in rows[:max_rows]:
+        state = {"In Progress": "sedang berjalan", "Completed": "selesai"}.get(r["status"], r["status"])
+        lines.append(
+            f"\n{_ddmm(r['checkout_time'])} {_hhmm(r['checkout_time'])} | {r['vehicle_name']} ({r['license_plate']})\n"
+            f"  Driver: {r['driver_name']}\n"
+            f"  Penumpang: {r.get('passenger_names', '-')}\n"
+            f"  Tujuan: {r['destination']} ({state})"
+        )
+    if len(rows) > max_rows:
+        lines.append(f"\n... dan {len(rows) - max_rows} perjalanan lain (lihat dile Excel)")
+    return "\n".join(lines)
+    
 def get_status_summary() -> str:
     db = firestore.client()
     available, maintenance, in_use = [], [], []
@@ -112,7 +149,12 @@ def get_status_summary() -> str:
     lines.append(f"Sedang dipakai ({len(in_use)}):")
     for vid, label in in_use:
         log = active_logs.get(vid, {})
-        lines.append(f" - {label} | {log.get('driver_name', '-')} -> {log.get('destination', '-')}")
+        pax = ", ".join(p.get("name", "") for p in log.get("passengers", [])) or "-"
+        since = _hhmm(log.get("checkout_time", ""))
+        lines.append(
+            f" - {label} | {log.get('driver_name', '-')} -> {log.get('destination', '-')}"
+            f" | sejak {since} | penumpang: {pax}"    
+        )
     if not in_use:
         lines.append(" -")
     lines.append(f"Maintenance ({len(maintenance)}):")

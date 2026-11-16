@@ -56,7 +56,7 @@ def test_dispatch_report_sends_summary_and_file(monkeypatch, tmp_path):
 
     monkeypatch.setattr(d, "find_employee", lambda p: {"full_name": "Budi"})
     monkeypatch.setattr(d, "parse_intent", lambda t: {"intent": "laporan_kendaraan", "start_date": "2026-11-01","end_date": "2026-11-04", "keyword": None})
-    monkeypatch.setattr(d.vehicle_service, "fetch_trips", lambda s, e, k=None: rows)
+    monkeypatch.setattr(d.vehicle_service, "fetch_trips", lambda *a, **k: rows)
     monkeypatch.setattr(d.vehicle_service, "REPORT_DIR", str(tmp_path))
     monkeypatch.setattr(d, "write_audit", lambda *a, **k: None)
 
