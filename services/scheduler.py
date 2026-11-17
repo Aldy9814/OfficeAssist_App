@@ -1,7 +1,8 @@
-import  asyncio
+import asyncio
 import logging
 
 from services.broadcast_service import run_due
+from services.settings import is_bot_enabled
 from services.wa_client import get_client
 
 log = logging.getLogger("broadcast.scheduler")
@@ -11,6 +12,9 @@ async def run_broadcast_scheduler(interval: int = 30) -> None:
     log.info("Broadcast scheduler dimulai (provider=%s, interval=%ss)", type(client).__name__, interval)
     while True:
         try:
+            if not await asyncio.to_thread(is_bot_enabled):
+                await asyncio.sleep(interval)
+                continue
             results = await asyncio.to_thread(run_due, client, False)
             for r in results:
                 log.info(

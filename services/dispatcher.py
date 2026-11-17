@@ -8,6 +8,7 @@ from sqlalchemy import create_engine ,text
 from services import vehicle_service
 from services.intent import parse_intent
 from services.wa_client import normalize_phone
+from services.settings import is_bot_enabled
 
 _engine = None
 
@@ -19,6 +20,8 @@ HELP_TEXT = (
     "- siapa yang pakai mobil L 2222 TS hari ini\n"
     "- perjalanan Pak Anton minggu ini"
 )
+
+BOT_OFF_TEXT = "OfficeAssist sedang dinonaktifkan sementara. Silakan coba lagi nanti."
 
 class RecordingClient:
     def __init__(self, inner):
@@ -77,6 +80,10 @@ def handle_message(sender: str, message: str, client) -> None:
     client = RecordingClient(client)
     intent, status, parsed = "lainnya", "sukses", None
     try:
+        if not is_bot_enabled():
+            intent = "bot_nonaktif"
+            client.send_text(phone, BOT_OFF_TEXT)
+            return
         employee = find_employee(phone)
         if not employee:
             intent, status = "tidak_terdaftar", "gagal"

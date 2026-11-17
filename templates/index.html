@@ -128,6 +128,27 @@
         function DashboardApp() {
             const [data] = useState(window.SERVER_DATA);
             const [selected, setSelected] = useState(null);
+            const [botEnabled, setBotEnabled] = useState(window.SERVER_DATA.botEnabled !== false);
+            const [botBusy, setBotBusy] = useState(false);
+
+            const toggleBot = async () => {
+                const next = !botEnabled;
+                const msg = next ? "Aktifkan OfficeAssist?" : "Nonaktifkan OfficeAssist? Bot berhenti menjawab dan scheduled broadcast ditahan"
+                if (!window.confirm(msg)) return;
+                setBotBusy(true);
+                try {
+                    const res = await fetch('/api/bot/toggle', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled: next })
+                    });
+                    if (!res.ok) throw new Error('gagal');
+                    setBotEnabled(next);
+                } catch (e) {
+                    alert("Gagal mengubah status bot.");
+                }
+                setBotBusy(false);
+            };
 
             return (
                 <div style={styles.bodyBackground}>
