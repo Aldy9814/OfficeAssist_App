@@ -159,6 +159,11 @@
                             <div className="flex-grow-1 p-4">
                                 <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
                                     <h2 className="fw-bold">Admin Dashboard</h2>
+                                    <div>
+                                        <button type="button" className={"btn fw-bold " + (botEnabled ? "btn-success" : "btn-secondary")} onClick={toggleBot} disabled={botBusy}>
+                                            <i className={"bi me-1 " + (botEnabled ? "bi-toggle-on" : "bi-toggle-off")}></i>{botEnabled ? "Bot Aktif" : "Bot Nonaktif"}
+                                        </button>
+                                    </div>
                                     <div><span className="badge bg-success fs-6"><i className="bi bi-check-circle me-1"></i> Bot Aktif</span></div>
                                 </div>
 

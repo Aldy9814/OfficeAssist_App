@@ -16,11 +16,12 @@ from firebase_admin import credentials
 load_dotenv()
 
 from google import genai
-from routers import hr, disposition, vehicle, broadcast_dev
+from routers import hr, disposition, vehicle, broadcast_dev, bot_control
 from services.dispatcher import handle_message
 from services.poller import run_poller
 from services.wa_client import ConsoleClient, get_client, parse_incoming
 from services.scheduler import run_broadcast_scheduler
+from services.settings import is_bot_enabled
 
 DB_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -73,6 +74,7 @@ app.include_router(hr.router)
 app.include_router(disposition.router)
 app.include_router(vehicle.router)
 app.include_router(broadcast_dev.router)
+app.include_router(bot_control.router)
 
 # ==================== MIDDLEWARE AUTH (DASHBOARD) ====================
 @app.middleware("http")
@@ -150,7 +152,8 @@ async def view_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="index.html", context={
         "total_employees": total_emp,
         "total_interactions": total_interactions,
-        "audit_logs_json": json.dumps(logs)
+        "audit_logs_json": json.dumps(logs),
+        "bot_enabled": is_bot_enabled(force=True)
     })
 
 # ==================== WHATSAPP & GEMINI WEBHOOK ====================

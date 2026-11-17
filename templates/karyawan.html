@@ -97,6 +97,15 @@
                 return Array.from(divSet).sort();
             }, []);
 
+            const uniqueRoles = useMemo(() => {
+                const seen = {};
+                data.forEach(k => {
+                    const r = String(k.role || '').trim();
+                    if (r && !seen[r.toLowerCase()]) seen[r.toLowerCase()] = r;
+                });
+                return Object.keys(seen).map(key => seen[key]).sort();
+            }, [data]);
+
             const processedData = useMemo(() => {
                 let filtered = [...data];
                 
@@ -109,8 +118,9 @@
                     );
                 }
 
-                if (filterDivision) filtered = filtered.filter(k => k.division === filterDivision);
-                if (filterRole) filtered = filtered.filter(k => k.role === filterRole);
+                const norm = (v) => String(v || '').trim().toLowerCase();
+                if (filterDivision) filtered = filtered.filter(k => norm(k.division) === norm(filterDivision));
+                if (filterRole) filtered = filtered.filter(k => norm(k.role) === norm(filterRole));
                 
                 filtered.sort((a, b) => {
                     if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -265,8 +275,7 @@
                                                 <label className="form-label text-muted small fw-bold mb-1">Filter Role</label>
                                                 <select className="form-select form-select-sm" value={filterRole} onChange={(e) => {setFilterRole(e.target.value); setCurrentPage(1);}}>
                                                     <option value="">Semua Role</option>
-                                                    <option value="admin">Admin</option>
-                                                    <option value="karyawan">Karyawan</option>
+                                                    {uniqueRoles.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
                                                 </select>
                                             </div>
                                             <div className="col-md-2 text-end">
@@ -372,7 +381,7 @@
                                                 <div className="col-md-6 mb-3">
                                                     <label className="form-label small fw-bold text-muted">Role Akses</label>
                                                     <select className="form-select shadow-sm" name="role" value={formData.role} onChange={handleInputChange}>
-                                                        <option value="karyawan">Karyawan</option>
+                                                        <option value="user">User</option>
                                                         <option value="admin">Admin</option>
                                                     </select>
                                                 </div>
@@ -420,7 +429,7 @@
                                                 <div className="col-md-6 mb-3">
                                                     <label className="form-label small fw-bold text-muted">Role Akses</label>
                                                     <select className="form-select shadow-sm" name="role" value={editFormData.role} onChange={handleEditInputChange}>
-                                                        <option value="karyawan">Karyawan</option>
+                                                        <option value="user">User</option>
                                                         <option value="admin">Admin</option>
                                                     </select>
                                                 </div>
