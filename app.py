@@ -15,8 +15,7 @@ from firebase_admin import credentials
 
 load_dotenv()
 
-from google import genai
-from routers import hr, disposition, vehicle, broadcast_dev, bot_control
+from routers import hr, disposition, vehicle, broadcast_dev, bot_control, chat_demo
 from services.dispatcher import handle_message
 from services.poller import run_poller
 from services.wa_client import ConsoleClient, get_client, parse_incoming
@@ -29,9 +28,6 @@ ADMIN_USER = os.getenv("ADMIN_USER")
 ADMIN_PASS = os.getenv("ADMIN_PASS")
 INTERNAL_API_KEY= os.getenv("INTERNAL_API_KEY")
 engine = create_engine(DB_URL)
-
-api_key = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key)
 
 
 if not firebase_admin._apps:
@@ -75,6 +71,7 @@ app.include_router(disposition.router)
 app.include_router(vehicle.router)
 app.include_router(broadcast_dev.router)
 app.include_router(bot_control.router)
+app.include_router(chat_demo.router)
 
 # ==================== MIDDLEWARE AUTH (DASHBOARD) ====================
 @app.middleware("http")
@@ -97,6 +94,8 @@ async def auth_middleware(request: Request, call_next):
     try:
         jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
     except jwt.PyJWTError:
+        if path.startswith("/api/"):
+            return JSONResponse(status_code=401, content={"pesan": "Sesi berakhir."})
         return RedirectResponse(url="/login")
     return await call_next(request)
     
@@ -114,7 +113,7 @@ async def view_login(request: Request):
 async def process_login(data: LoginData):
     if data.username == ADMIN_USER and data.password == ADMIN_PASS:
         token = jwt.encode(
-            {"sub": data.username, "exp": datetime.utcnow() + timedelta(hours=24)}, 
+            {"sub": data.username, "exp": datetime.now(timezone.utc) + timedelta(hours=24)}, 
             SECRET_KEY, 
             algorithm="HS256"
         )
@@ -130,7 +129,7 @@ async def process_logout():
     return response
 
 @app.get("/", response_class=HTMLResponse)
-async def view_dashboard(request: Request):
+def view_dashboard(request: Request):
     with engine.connect() as conn:
         total_emp = conn.execute(text(
             "SELECT COUNT(*) FROM employees"
@@ -183,6 +182,10 @@ def simulate_message(msg: SimulatedMessage):
     client = ConsoleClient()
     handle_message(msg.sender, msg.text, client)
     return {"replies": client.sent}
+
+@app.get("/chat", response_class=HTMLResponse)
+async def view_chat(request: Request):
+    return templates.TemplateResponse(request=request, name="chat.html")
  
  
 if __name__ == "__main__":

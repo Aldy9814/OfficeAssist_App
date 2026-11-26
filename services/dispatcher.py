@@ -1,7 +1,9 @@
 import os
 import json
+import time
 import traceback
 from datetime import date
+from typing import Optional
 
 from sqlalchemy import create_engine ,text
 
@@ -40,14 +42,14 @@ class RecordingClient:
 def _get_engine():
     global _engine
     if _engine is None:
-        _engine = create_engine(os.getenv("DATABASE_URL"))
+        _engine = create_engine(os.getenv("DATABASE_URL"), pool_pre_ping=True, pool_recycle=1800)
     return _engine
 
 def find_employee(phone: str):
     if os.getenv("DEV_ALLOW_ALL", "false").lower() == "true":
         return {"full_name": "Dev user", "division": "-", "role": "dev"}
 
-    variants = {phone, f"{phone}"}
+    variants = {phone}
     if phone.startswith("62"):
         variants.add("0" + phone[2:])
     params = {f"v{i}": v for i, v in enumerate(variants)}
@@ -75,22 +77,28 @@ def write_audit(phone: str, message: str, intent: str, status: str, response_mes
     except Exception as e:
         print(f"[audit] gagal menulis log: {e}")
 
-def handle_message(sender: str, message: str, client) -> None:
+def handle_message(sender: str, message: str, client, meta: Optional[dict] = None) -> None:
     phone = normalize_phone(sender)
     client = RecordingClient(client)
     intent, status, parsed = "lainnya", "sukses", None
+    timings = {}
+    t_start = time.perf_counter()
     try:
+        t_auth = time.perf_counter()
         if not is_bot_enabled():
             intent = "bot_nonaktif"
             client.send_text(phone, BOT_OFF_TEXT)
             return
         employee = find_employee(phone)
+        timings["auth_ms"] = int((time.perf_counter() - t_auth) * 1000)
         if not employee:
             intent, status = "tidak_terdaftar", "gagal"
             client.send_text(phone, "Maaf, nomor anda belum terdaftar. Hubungi HR untuk pendaftaran")
             return
 
+        t_intent = time.perf_counter()
         parsed = parse_intent(message)
+        timings["intent_ms"] = int((time.perf_counter()-t_intent) * 1000)
         intent = parsed["intent"]
 
         if intent == "laporan_kendaraan":
@@ -125,9 +133,18 @@ def handle_message(sender: str, message: str, client) -> None:
             pass
 
     finally:
+        t_audit = time.perf_counter()
         write_audit(
-            phone, message, intent, status,
-            response_message="\n\n".join(client.texts) or None,
-            response_file=", ".join(client.files) or None,
-            parsed_params=json.dumps(parsed, ensure_ascii=False) if parsed else None
-        )
+                    phone, message, intent, status,
+                    response_message="\n\n".join(client.texts) or None,
+                    response_file=", ".join(client.files) or None,
+                    parsed_params=json.dumps(parsed, ensure_ascii=False) if parsed else None
+                )
+        timings["audit_ms"] = int((time.perf_counter() - t_audit) * 1000)
+        timings["total_ms"] = int((time.perf_counter() - t_start) * 1000)
+        timings["rest_ms"] = timings["total_ms"] - timings.get("intent_ms", 0)
+        print(f"[timing] intent={timings.get('intent_ms', '-')}ms auth={timings.get('auth_ms', '-')}ms " 
+              f"audit={timings['audit_ms']}ms total={timings['total_ms']}ms ({intent})")
+        if meta is not None:
+            meta.update(intent=intent, status=status, parsed=parsed, timings=timings)
+        

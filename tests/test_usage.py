@@ -36,6 +36,10 @@ def test_usage_intent_variants():
     r = parse_rule_based("perjalanan Pak Anton minggu ini", TODAY)
     assert r["intent"] == "pemakaian_kendaraan" and r["person"] == "Anton"
 
+def test_laporan_penggunaan_is_a_report_not_usage():
+    r = parse_rule_based("tolong kirim laporan penggunaan kendaraan minggu ini", TODAY)
+    assert r["intent"] == "laporan_kendaraan"
+
 def test_existing_intents_unchanged():
     assert parse_rule_based("laporan kendaraan minggu ini", TODAY)["intent"] == "laporan_kendaraan"
     assert parse_rule_based("status kendaraan", TODAY)["intent"] == "status_kendaraan"

@@ -29,3 +29,5 @@ uploads/
 .idea/
 .DS_Store
 Thumbs.db
+
+eval/
